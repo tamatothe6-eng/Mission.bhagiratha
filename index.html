@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Mission Bhagiratha Tracker</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+      background: linear-gradient(135deg, #0f2027, #203a43, #2c5364);
+      color: #f1faff;
+    }
+    header {
+      text-align: center;
+      padding: 20px;
+      background: rgba(0,0,0,0.4);
+    }
+    header h1 {
+      margin: 0;
+      font-size: 26px;
+      font-weight: bold;
+      color: #4fc3f7;
+    }
+    header p {
+      margin: 5px 0 0;
+      font-size: 14px;
+      font-style: italic;
+      color: #b3e5fc;
+    }
+    .container {
+      padding: 15px;
+      max-width: 600px;
+      margin: auto;
+    }
+    label {
+      display: block;
+      margin: 10px 0 5px;
+      font-size: 14px;
+    }
+    select, input, textarea, button {
+      width: 100%;
+      padding: 10px;
+      border-radius: 8px;
+      border: none;
+      margin-bottom: 12px;
+      font-size: 14px;
+    }
+    select, input, textarea {
+      background: #102027;
+      color: #e0f7fa;
+    }
+    button {
+      background: #4fc3f7;
+      color: #000;
+      font-weight: bold;
+      cursor: pointer;
+    }
+    button:hover {
+      background: #29b6f6;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 20px;
+      background: rgba(255,255,255,0.05);
+    }
+    th, td {
+      border: 1px solid #4fc3f7;
+      padding: 8px;
+      text-align: center;
+      font-size: 13px;
+    }
+    th {
+      background: #01579b;
+      color: #fff;
+    }
+    #dataSection, #reportSection {
+      display: none;
+      margin-top: 20px;
+    }
+    .delete-btn {
+      background: red;
+      color: white;
+      border: none;
+      padding: 5px 10px;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+    .delete-btn:hover {
+      background: darkred;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Mission Bhagiratha Tracker</h1>
+    <p>G.P. Chinna Tadgoor</p>
+  </header>
+
+  <div class="container">
+    <label for="date">Date</label>
+    <input type="date" id="date">
+
+    <label for="village">Village</label>
+    <select id="village">
+      <option value="Tadgoor Small">Tadgoor Small</option>
+      <option value="Kharag">Kharag</option>
+    </select>
+
+    <label for="supply">Water Supply?</label>
+    <select id="supply" onchange="toggleReason()">
+      <option value="Yes">Yes</option>
+      <option value="No">No</option>
+    </select>
+
+    <div id="reasonBox" style="display:none;">
+      <label for="reason">Reason (Water Not Supplied)</label>
+      <textarea id="reason" rows="2" placeholder="Enter reason..."></textarea>
+    </div>
+
+    <button onclick="saveData()">Save</button>
+    <button onclick="printData()">Print</button>
+    <button onclick="exportPDF()">Export PDF</button>
+    <button onclick="toggleData()">Show / Hide Data</button>
+
+    <!-- Data Table Section -->
+    <div id="dataSection">
+      <table id="dataTable">
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Village</th>
+            <th>Water Supply</th>
+            <th>Reason</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+
+    <!-- Report Section -->
+    <div id="reportSection">
+      <h3>Reports</h3>
+      <label for="reportType">Select Report Type:</label>
+      <select id="reportType">
+        <option value="week">Weekly</option>
+        <option value="month">Monthly</option>
+        <option value="year">Yearly</option>
+      </select>
+      <button onclick="generateReport()">Generate Report</button>
+
+      <table id="reportTable">
+        <thead>
+          <tr>
+            <th>Period</th>
+            <th>Total Entries</th>
+            <th>Water Supplied</th>
+            <th>Not Supplied</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- PDF Library -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
+
+  <script>
+    function toggleReason() {
+      let supply = document.getElementById("supply").value;
+      document.getElementById("reasonBox").style.display = 
+        (supply === "No") ? "block" : "none";
+    }
+
+    function saveData() {
+      let date = document.getElementById("date").value;
+      let village = document.getElementById("village").value;
+      let supply = document.getElementById("supply").value;
+      let reason = (supply === "No") ? document.getElementById("reason").value : "";
+
+      if (!date) {
+        alert("Please select a date!");
+        return;
+      }
+
+      let data = JSON.parse(localStorage.getItem("waterData") || "[]");
+      let newEntry = { id: Date.now(), date, village, supply, reason };
+      data.push(newEntry);
+      localStorage.setItem("waterData", JSON.stringify(data));
+
+      loadData();
+      document.getElementById("reason").value = "";
+    }
+
+    function loadData() {
+      let data = JSON.parse(localStorage.getItem("waterData") || "[]");
+      let table = document.getElementById("dataTable").getElementsByTagName("tbody")[0];
+      table.innerHTML = "";
+
+      data.forEach(row => {
+        let newRow = table.insertRow();
+        newRow.insertCell(0).innerText = row.date;
+        newRow.insertCell(1).innerText = row.village;
+        newRow.insertCell(2).innerText = row.supply;
+        newRow.insertCell(3).innerText = row.reason;
+
+        // Action button
+        let actionCell = newRow.insertCell(4);
+        let delBtn = document.createElement("button");
+        delBtn.innerText = "Delete";
+        delBtn.className = "delete-btn";
+        delBtn.onclick = function () {
+          deleteData(row.id);
+        };
+        actionCell.appendChild(delBtn);
+      });
+    }
+
+    function deleteData(id) {
+      let data = JSON.parse(localStorage.getItem("waterData") || "[]");
+      data = data.filter(row => row.id !== id);
+      localStorage.setItem("waterData", JSON.stringify(data));
+      loadData();
+    }
+
+    function printData() {
+      window.print();
+    }
+
+    function exportPDF() {
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF();
+      doc.text("Mission Bhagiratha Tracker - G.P. Chinna Tadgoor", 14, 15);
+      doc.autoTable({ html: "#dataTable", startY: 20 });
+      doc.save("Mission_Bhagiratha_Report.pdf");
+    }
+
+    function toggleData() {
+      let dataSection = document.getElementById("dataSection");
+      let reportSection = document.getElementById("reportSection");
+      if (dataSection.style.display === "none") {
+        dataSection.style.display = "block";
+        reportSection.style.display = "block";
+        loadData();
+      } else {
+        dataSection.style.display = "none";
+        reportSection.style.display = "none";
+      }
+    }
+
+    function generateReport() {
+      let type = document.getElementById("reportType").value;
+      let data = JSON.parse(localStorage.getItem("waterData") || "[]");
+      let grouped = {};
+
+      data.forEach(row => {
+        let d = new Date(row.date);
+        let key = "";
+        if (type === "week") {
+          let week = Math.ceil((d.getDate() + 6 - d.getDay()) / 7);
+          key = d.getFullYear() + "-W" + week;
+        } else if (type === "month") {
+          key = d.getFullYear() + "-" + (d.getMonth() + 1);
+        } else {
+          key = d.getFullYear();
+        }
+        if (!grouped[key]) grouped[key] = { total: 0, yes: 0, no: 0 };
+        grouped[key].total++;
+        if (row.supply === "Yes") grouped[key].yes++;
+        else grouped[key].no++;
+      });
+
+      let table = document.getElementById("reportTable").getElementsByTagName("tbody")[0];
+      table.innerHTML = "";
+      for (let key in grouped) {
+        let r = grouped[key];
+        let newRow = table.insertRow();
+        newRow.insertCell(0).innerText = key;
+        newRow.insertCell(1).innerText = r.total;
+        newRow.insertCell(2).innerText = r.yes;
+        newRow.insertCell(3).innerText = r.no;
+      }
+    }
+
+    // Load data when page opens
+    loadData();
+  </script>
+</body>
+</html>
